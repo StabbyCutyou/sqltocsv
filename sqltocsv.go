@@ -8,8 +8,8 @@ import (
 	"time"
 
 	// blank to add the mysql driver
-	"github.com/StabbyCutyou/sqlx"
 	_ "github.com/go-sql-driver/mysql"
+	"github.com/jmoiron/sqlx"
 )
 
 // Config is
@@ -41,12 +41,15 @@ func main() {
 	csvWriter.Comma = 0x0009
 	firstLine := true
 	for results.Next() {
-		row, cols, err := results.SliceScanWithColumns()
+		row, err := results.SliceScan()
 		if err != nil {
 			log.Fatal(err)
 		}
 		if firstLine {
-			firstLine = false
+			cols, err := results.Columns()
+			if err != nil {
+				log.Fatal(err)
+			}
 			csvWriter.Write(cols)
 		}
 
