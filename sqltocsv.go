@@ -46,6 +46,7 @@ func main() {
 			log.Fatal(err)
 		}
 		if firstLine {
+			firstLine = false
 			cols, err := results.Columns()
 			if err != nil {
 				log.Fatal(err)
@@ -105,3 +106,5 @@ func getConfig() *Config {
 
 	return cfg
 }
+
+//SELECT * FROM users WHERE created_at >= '2015-01-01 00:00:00' AND created_at < '2015-02-01 00:00:00'
