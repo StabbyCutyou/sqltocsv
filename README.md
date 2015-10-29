@@ -4,7 +4,7 @@ SQL To CSV
 This is a utility to make use of golangs sql package and it's streaming capabilities,
 for exporting large result sets out of an RDBMS and into a text file.
 
-Curently, it supports TSV and mysql. Additional support coming for setting the delimeter,
+Currently, it supports TSV and mysql. Additional support coming for setting the delimeter,
 as well as additional databases.
 
 To run it, call from bash like so:
@@ -17,7 +17,7 @@ TODO
 =====
 Proper Readme
 Postgres support
-Variable delimeter
+Variable delimiter
 
 LICENSE
 =========
