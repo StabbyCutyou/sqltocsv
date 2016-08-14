@@ -3,7 +3,6 @@ package main
 import (
 	"encoding/csv"
 	"flag"
-	"fmt"
 	"log"
 	"os"
 
@@ -29,6 +28,10 @@ type Config struct {
 	quoteType       string
 }
 
+var delimeters = map[string]rune{
+	"tab": 0x0009,
+}
+
 func main() {
 	cfg := getConfig()
 	db, err := sqlx.Open(cfg.dbAdapter, cfg.connString)
@@ -41,12 +44,14 @@ func main() {
 		log.Fatal(err)
 	}
 
-	output := os.Stdout
-
-	csvWriter := csv.NewWriter(output)
+	csvWriter := csv.NewWriter(os.Stdout)
 	// If I ever need to support more than tabs/commas, this needs improving
-	if cfg.delimeter == "tab" {
-		csvWriter.Comma = 0x0009
+	if cfg.delimeter != "comma" {
+		if comma, ok := delimeters[cfg.delimeter]; ok {
+			csvWriter.Comma = comma
+		} else {
+			log.Printf("Warning: No known delimeter for %s, defaulting to Comma", cfg.delimeter)
+		}
 	}
 
 	converter := converters.GetConverter(cfg.dbAdapter)
@@ -81,11 +86,11 @@ func main() {
 	}
 
 	csvWriter.Flush()
-	fmt.Printf("\nFinished processing %d lines\n", count)
+	log.Printf("\nFinished processing %d lines\n", count)
 }
 
 func getConfig() *Config {
-	d := flag.String("d", "mysql", "The (d)atabase adapter to sue")
+	d := flag.String("d", "mysql", "The (d)atabase adapter to use")
 	c := flag.String("c", "", "The (c)onnection string to use")
 	q := flag.String("q", "", "The (q)uery to use")
 	m := flag.String("m", "comma", "The deli(m)eter to use: 'comma' or 'tab'. Defaults to 'comma'")

@@ -1,13 +1,10 @@
 package converters
 
-import "fmt"
-
 var converters = make(map[string]Converter)
 
 func init() {
 	register("postgres", &Pg{})
 	register("mysql", &MySQL{})
-	register("redshift", &Redshift{})
 }
 
 // Converter is the adapter for handling datatypes from different databases
@@ -20,8 +17,6 @@ func register(name string, c Converter) {
 }
 
 func GetConverter(name string) Converter {
-	// lol go
-	fmt.Println(name)
-	c := converters[name]
+	c := converters[name] // lol go
 	return c
 }
