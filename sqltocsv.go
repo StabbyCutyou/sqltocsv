@@ -45,13 +45,10 @@ func main() {
 	}
 
 	csvWriter := csv.NewWriter(os.Stdout)
-	// If I ever need to support more than tabs/commas, this needs improving
-	if cfg.delimeter != "comma" {
-		if comma, ok := delimeters[cfg.delimeter]; ok {
-			csvWriter.Comma = comma
-		} else {
-			log.Printf("Warning: No known delimeter for %s, defaulting to Comma", cfg.delimeter)
-		}
+	if comma, ok := delimeters[cfg.delimeter]; ok {
+		csvWriter.Comma = comma
+	} else {
+		log.Printf("Warning: No known delimeter for %s, defaulting to Comma", cfg.delimeter)
 	}
 
 	converter := converters.GetConverter(cfg.dbAdapter)
