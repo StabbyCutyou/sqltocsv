@@ -16,8 +16,7 @@ import (
 	"github.com/StabbyCutyou/sqltocsv/converters"
 )
 
-// Config is
-type Config struct {
+type config struct {
 	dbAdapter       string
 	connString      string
 	sqlQuery        string
@@ -29,7 +28,8 @@ type Config struct {
 }
 
 var delimeters = map[string]rune{
-	"tab": 0x0009,
+	"tab": rune('	'), //That's a tab in there, yo
+	"comma": rune(','),
 }
 
 func main() {
@@ -89,7 +89,7 @@ func main() {
 	log.Printf("\nFinished processing %d lines\n", count)
 }
 
-func getConfig() *Config {
+func getConfig() *config {
 	d := flag.String("d", "mysql", "The (d)atabase adapter to use")
 	c := flag.String("c", "", "The (c)onnection string to use")
 	q := flag.String("q", "", "The (q)uery to use")
@@ -100,14 +100,14 @@ func getConfig() *Config {
 
 	flag.Parse()
 
-	if q == nil {
+	if *q == "" {
 		log.Fatal("You must provide query via -q")
 	}
-	if c == nil {
+	if *c == "" {
 		log.Fatal("You must provide a connection string via -c")
 	}
 
-	return &Config{
+	return &config{
 		dbAdapter:       *d,
 		connString:      *c,
 		sqlQuery:        *q,

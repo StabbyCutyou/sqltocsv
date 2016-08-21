@@ -2,9 +2,9 @@ package converters
 
 import "fmt"
 
-type MySQL struct{}
+type mySQL struct{}
 
-func (m *MySQL) ColumnToString(col interface{}) (string, error) {
+func (m *mySQL) ColumnToString(col interface{}) (string, error) {
 	// In all my testing, it seems like the mysql db adapter always returns []byte
 	switch col.(type) {
 	case []byte:

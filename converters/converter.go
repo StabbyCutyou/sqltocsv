@@ -3,8 +3,8 @@ package converters
 var converters = make(map[string]Converter)
 
 func init() {
-	register("postgres", &Pg{})
-	register("mysql", &MySQL{})
+	register("postgres", &pg{})
+	register("mysql", &mySQL{})
 }
 
 // Converter is the adapter for handling datatypes from different databases
@@ -16,7 +16,7 @@ func register(name string, c Converter) {
 	converters[name] = c
 }
 
+// GetConverter will return a given converter by name from the registry
 func GetConverter(name string) Converter {
-	c := converters[name] // lol go
-	return c
+	return converters[name]
 }

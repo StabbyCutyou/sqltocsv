@@ -6,9 +6,9 @@ import (
 	"time"
 )
 
-type Pg struct{}
+type pg struct{}
 
-func (p *Pg) ColumnToString(col interface{}) (string, error) {
+func (p *pg) ColumnToString(col interface{}) (string, error) {
 	switch col.(type) {
 	case float64:
 		return strconv.FormatFloat(col.(float64), 'f', 6, 64), nil
