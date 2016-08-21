@@ -6,7 +6,10 @@ for exporting large result sets out of an RDBMS and into a text file.
 
 Currently, it supports MySQL and Postgres drivers, which means any database that
 supports those drivers should work. For example, RedShift works with the Postgres driver,
-and MemSQL works with the MySQL driver
+and MemSQL works with the MySQL driver.
+
+If there are unsupported drivers, or issues with "compatible" drivers, please
+file an issue, or better yet open a PR to address the problem.
 
 Flags
 =====
