@@ -8,7 +8,7 @@ import (
 
 type pg struct{}
 
-func (p *pg) ColumnToString(col interface{}) (string, error) {
+func (pg) ColumnToString(col interface{}) (string, error) {
 	switch col.(type) {
 	case float64:
 		return strconv.FormatFloat(col.(float64), 'f', 6, 64), nil
