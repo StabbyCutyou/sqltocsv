@@ -21,13 +21,13 @@ type config struct {
 	connString      string
 	sqlQuery        string
 	outputFile      string
-	delimeter       string
+	delimiter       string
 	obfuscateFields string
 	quoteFields     string
 	quoteType       string
 }
 
-var delimeters = map[string]rune{
+var delimiters = map[string]rune{
 	"tab": rune('	'), //That's a tab in there, yo
 	"comma": rune(','),
 }
@@ -45,10 +45,10 @@ func main() {
 	}
 
 	csvWriter := csv.NewWriter(os.Stdout)
-	if comma, ok := delimeters[cfg.delimeter]; ok {
+	if comma, ok := delimiters[cfg.delimiter]; ok {
 		csvWriter.Comma = comma
 	} else {
-		log.Printf("Warning: No known delimeter for %s, defaulting to Comma", cfg.delimeter)
+		log.Printf("Warning: No known delimiter for %s, defaulting to Comma", cfg.delimiter)
 	}
 
 	converter := converters.GetConverter(cfg.dbAdapter)
@@ -90,7 +90,7 @@ func getConfig() *config {
 	d := flag.String("d", "mysql", "The (d)atabase adapter to use")
 	c := flag.String("c", "", "The (c)onnection string to use")
 	q := flag.String("q", "", "The (q)uery to use")
-	m := flag.String("m", "comma", "The deli(m)eter to use: 'comma' or 'tab'. Defaults to 'comma'")
+	m := flag.String("m", "comma", "The deli(m)iter to use: 'comma' or 'tab'. Defaults to 'comma'")
 	o := flag.String("o", "", "The fields to (o)bfuscate")
 	w := flag.String("w", "", "The fields to (w)rap in quotes")
 	t := flag.String("t", "double", "The (t)ype of quote to use with -w: 'single' or 'double'. Defaults to 'double'")
@@ -109,7 +109,7 @@ func getConfig() *config {
 		connString:      *c,
 		sqlQuery:        *q,
 		obfuscateFields: *o,
-		delimeter:       *m,
+		delimiter:       *m,
 		quoteFields:     *w,
 		quoteType:       *t,
 	}
