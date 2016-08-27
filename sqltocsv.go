@@ -44,6 +44,9 @@ func main() {
 		log.Fatal(err)
 	}
 
+	// Redirect the output to STDOUT
+	// All log messages write to STDEER to make redirecting the output to a file
+	// simpler
 	csvWriter := csv.NewWriter(os.Stdout)
 	if comma, ok := delimiters[cfg.delimiter]; ok {
 		csvWriter.Comma = comma
