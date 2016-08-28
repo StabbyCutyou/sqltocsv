@@ -33,12 +33,18 @@ var delimiters = map[string]rune{
 }
 
 func main() {
-	cfg := getConfig()
+	run(getConfig())
+}
+
+// run is broken out so that it's easier to test
+func run(cfg *config) {
+	// Get the connection to the DB
 	db, err := sqlx.Open(cfg.dbAdapter, cfg.connString)
 	if err != nil {
 		log.Fatal(err)
 	}
 
+	// Run the initial query
 	results, err := db.Queryx(cfg.sqlQuery)
 	if err != nil {
 		log.Fatal(err)
@@ -54,9 +60,11 @@ func main() {
 		log.Printf("Warning: No known delimiter for %s, defaulting to Comma", cfg.delimiter)
 	}
 
+	// Get our converter
 	converter := converters.GetConverter(cfg.dbAdapter)
 
 	count := 0
+	// Stream the result set
 	for results.Next() {
 		row, err := results.SliceScan()
 		if err != nil {
@@ -72,13 +80,12 @@ func main() {
 		}
 
 		rowStrings := make([]string, len(row))
-		// It seems for mysql, the case is always []byte of a string?
 		for i, col := range row {
 			val, err := converter.ColumnToString(col)
 			if err != nil {
 				log.Fatal(err)
 			}
-			// Inject quoting, obfuscating here
+			// TODO Inject quoting, obfuscating here
 			rowStrings[i] = val
 		}
 		csvWriter.Write(rowStrings)
@@ -87,6 +94,7 @@ func main() {
 
 	csvWriter.Flush()
 	log.Printf("\nFinished processing %d lines\n", count)
+
 }
 
 func getConfig() *config {
