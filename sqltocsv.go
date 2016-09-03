@@ -2,109 +2,148 @@ package main
 
 import (
 	"encoding/csv"
+	"flag"
+	"fmt"
 	"log"
 	"os"
 	"strconv"
-	"time"
+	"strings"
 
-	// blank to add the mysql driver
+	// Load the common drivers
 	_ "github.com/go-sql-driver/mysql"
+	_ "github.com/lib/pq"
+
+	// Load sqlx over database/sql
 	"github.com/jmoiron/sqlx"
+
+	"github.com/StabbyCutyou/sqltocsv/converters"
 )
 
-// Config is
-type Config struct {
-	dbAdapter  string
-	connString string
-	sqlQuery   string
-	outputFile string
+type config struct {
+	dbAdapter       string
+	connString      string
+	sqlQuery        string
+	outputFile      string
+	delimiter       string
+	obfuscateFields string
+	quoteFields     string
+	quoteType       string
+}
+
+var delimiters = map[string]rune{
+	"tab": rune('	'), //That's a tab in there, yo
+	"comma": rune(','),
 }
 
 func main() {
-	cfg := getConfig()
+	if err := run(getConfig()); err != nil {
+		log.Fatal(err)
+	}
+}
+
+// run is broken out so that it's easier to test
+func run(cfg *config) error {
+	// Get the connection to the DB
 	db, err := sqlx.Open(cfg.dbAdapter, cfg.connString)
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 
+	// Run the initial query
 	results, err := db.Queryx(cfg.sqlQuery)
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 
-	output, err := os.Create(cfg.outputFile)
-	if err != nil {
-		log.Fatal(err)
+	quoteCols := make(map[int]int) // This is ultimately slower for smaller data sets :(
+	for _, s := range strings.Split(cfg.quoteFields, ",") {
+		if s != "" { // Happens when the list is empty
+			i, err := strconv.Atoi(s)
+			if err != nil {
+				return fmt.Errorf("Error: Cannot parse %v as integer in the quote list. Please only provide the index of the column as an integer >= 0. Original error: %v", s, err)
+			}
+			quoteCols[i] = i
+		}
 	}
 
-	csvWriter := csv.NewWriter(output)
-	csvWriter.Comma = 0x0009
-	firstLine := true
+	// Redirect the output to STDOUT
+	// All log messages write to STDEER to make redirecting the output to a file
+	// simpler
+	csvWriter := csv.NewWriter(os.Stdout)
+	if comma, ok := delimiters[cfg.delimiter]; ok {
+		csvWriter.Comma = comma
+	} else {
+		log.Printf("Warning: No known delimiter for %s, defaulting to Comma", cfg.delimiter)
+	}
+
+	// Get our converter
+	converter := converters.GetConverter(cfg.dbAdapter)
+
+	count := 0
+	// Stream the result set
 	for results.Next() {
 		row, err := results.SliceScan()
 		if err != nil {
-			log.Fatal(err)
+			return err
 		}
-		if firstLine {
-			firstLine = false
+		// Only do this for the first line, aka the headers
+		if count == 0 {
 			cols, err := results.Columns()
 			if err != nil {
-				log.Fatal(err)
+				return err
 			}
 			csvWriter.Write(cols)
 		}
 
 		rowStrings := make([]string, len(row))
-		// It seems for mysql, the case is always []byte of a string?
 		for i, col := range row {
-			//log.Print(reflect.TypeOf(col))
-			switch col.(type) {
-			case float64:
-				rowStrings[i] = strconv.FormatFloat(col.(float64), 'f', 6, 64)
-			case int64:
-				rowStrings[i] = strconv.FormatInt(col.(int64), 10)
-			case bool:
-				rowStrings[i] = strconv.FormatBool(col.(bool))
-			case []byte:
-				rowStrings[i] = string(col.([]byte))
-			case string:
-				rowStrings[i] = col.(string)
-			case time.Time:
-				rowStrings[i] = col.(time.Time).String()
-			case nil:
-				rowStrings[i] = "NULL"
-			default:
-				log.Print(col)
+			val, err := converter.ColumnToString(col)
+			if err != nil {
+				return err
 			}
+			// TODO Inject obfuscating here before quoting
+			if _, ok := quoteCols[i]; ok {
+				//val = "'" + val + "'" // This method is actually faster than sprintf
+				val = fmt.Sprintf("\"%s\"", val)
+			}
+			rowStrings[i] = val
 		}
 		csvWriter.Write(rowStrings)
+		count++
 	}
 
 	csvWriter.Flush()
-	output.Close()
+	log.Printf("\nFinished processing %d lines\n", count)
+	return nil
 }
 
-func getConfig() *Config {
-	cfg := &Config{
-		dbAdapter:  os.Getenv("STC_DBADAPTER"),
-		connString: os.Getenv("STC_CONNSTRING"),
-		sqlQuery:   os.Getenv("STC_QUERY"),
-		outputFile: os.Getenv("STC_OUTPUTFILE"),
+func getConfig() *config {
+	d := flag.String("d", "mysql", "The (d)atabase adapter to use")
+	c := flag.String("c", "", "The (c)onnection string to use")
+	q := flag.String("q", "", "The (q)uery to use")
+	m := flag.String("m", "comma", "The deli(m)iter to use: 'comma' or 'tab'. Defaults to 'comma'")
+	//o := flag.String("o", "", "The fields to (o)bfuscate")
+	//w := flag.String("w", "", "The fields to (w)rap in quotes")
+	//t := flag.String("t", "double", "The (t)ype of quote to use with -w: 'single' or 'double'. Defaults to 'double'")
+
+	flag.Parse()
+
+	if *q == "" {
+		log.Fatal("You must provide query via -q")
 	}
-	if cfg.dbAdapter == "" {
-		log.Fatal("You must provide a connection string via STC_DBADAPTER")
-	}
-	if cfg.connString == "" {
-		log.Fatal("You must provide a connection string via STC_CONNSTRING")
-	}
-	if cfg.sqlQuery == "" {
-		log.Fatal("You must provide a query to run via STC_QUERY")
-	}
-	if cfg.outputFile == "" {
-		log.Fatal("You must provide an output file via STC_OUTPUTFILE")
+	if *c == "" {
+		log.Fatal("You must provide a connection string via -c")
 	}
 
-	return cfg
+	return &config{
+		dbAdapter:  *d,
+		connString: *c,
+		sqlQuery:   *q,
+		//obfuscateFields: *o,
+		delimiter: *m,
+		//quoteFields:     *w,
+		//quoteType:       *t,
+	}
 }
 
 //SELECT * FROM users WHERE created_at >= '2015-01-01 00:00:00' AND created_at < '2015-02-01 00:00:00'
