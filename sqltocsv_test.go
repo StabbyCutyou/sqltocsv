@@ -1,11 +1,29 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"testing"
 
 	"github.com/jmoiron/sqlx"
 )
+
+func BenchmarkAppend(b *testing.B) {
+	str := "Florgle"
+	for i := 0; i < b.N; i++ {
+		_ = "\"" + str + "\""
+	}
+	fmt.Printf("\"" + str + "\"")
+
+}
+
+func BenchmarkSprintf(b *testing.B) {
+	str := "Florgle"
+	for i := 0; i < b.N; i++ {
+		_ = fmt.Sprintf("\"%s\"", str)
+	}
+	fmt.Printf(fmt.Sprintf("\"%s\"", str))
+}
 
 func getMySQLConfig() *config {
 	return &config{
@@ -89,21 +107,27 @@ func TestMySQL(t *testing.T) {
 	cfg := getMySQLConfig()
 	db, err := sqlx.Open(cfg.dbAdapter, cfg.connString)
 	if err != nil {
-		log.Fatal(err)
+		t.Fatal(err)
 	}
+	tearDownMySQL(db)
 	defer tearDownMySQL(db)
 	setupMySQL(db)
-	run(cfg)
+	if err := run(cfg); err != nil {
+		t.Fatal(err)
+	}
 }
 
 func TestPostgreSQL(t *testing.T) {
 	cfg := getPostgreSQLConfig()
 	db, err := sqlx.Open(cfg.dbAdapter, cfg.connString)
 	if err != nil {
-		log.Fatal(err)
+		t.Fatal(err)
 	}
 
+	tearDownPostgreSQL(db)
 	defer tearDownPostgreSQL(db)
 	setupPostgreSQL(db)
-	run(cfg)
+	if err := run(cfg); err != nil {
+		t.Fatal(err)
+	}
 }

@@ -3,8 +3,11 @@ package main
 import (
 	"encoding/csv"
 	"flag"
+	"fmt"
 	"log"
 	"os"
+	"strconv"
+	"strings"
 
 	// Load the common drivers
 	_ "github.com/go-sql-driver/mysql"
@@ -33,21 +36,34 @@ var delimiters = map[string]rune{
 }
 
 func main() {
-	run(getConfig())
+	if err := run(getConfig()); err != nil {
+		log.Fatal(err)
+	}
 }
 
 // run is broken out so that it's easier to test
-func run(cfg *config) {
+func run(cfg *config) error {
 	// Get the connection to the DB
 	db, err := sqlx.Open(cfg.dbAdapter, cfg.connString)
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 
 	// Run the initial query
 	results, err := db.Queryx(cfg.sqlQuery)
 	if err != nil {
-		log.Fatal(err)
+		return err
+	}
+
+	quoteCols := make(map[int]int) // This is ultimately slower for smaller data sets :(
+	for _, s := range strings.Split(cfg.quoteFields, ",") {
+		if s != "" { // Happens when the list is empty
+			i, err := strconv.Atoi(s)
+			if err != nil {
+				return fmt.Errorf("Error: Cannot parse %v as integer in the quote list. Please only provide the index of the column as an integer >= 0. Original error: %v", s, err)
+			}
+			quoteCols[i] = i
+		}
 	}
 
 	// Redirect the output to STDOUT
@@ -68,13 +84,13 @@ func run(cfg *config) {
 	for results.Next() {
 		row, err := results.SliceScan()
 		if err != nil {
-			log.Fatal(err)
+			return err
 		}
 		// Only do this for the first line, aka the headers
 		if count == 0 {
 			cols, err := results.Columns()
 			if err != nil {
-				log.Fatal(err)
+				return err
 			}
 			csvWriter.Write(cols)
 		}
@@ -83,9 +99,13 @@ func run(cfg *config) {
 		for i, col := range row {
 			val, err := converter.ColumnToString(col)
 			if err != nil {
-				log.Fatal(err)
+				return err
 			}
-			// TODO Inject quoting, obfuscating here
+			// TODO Inject obfuscating here before quoting
+			if _, ok := quoteCols[i]; ok {
+				//val = "'" + val + "'" // This method is actually faster than sprintf
+				val = fmt.Sprintf("\"%s\"", val)
+			}
 			rowStrings[i] = val
 		}
 		csvWriter.Write(rowStrings)
@@ -94,7 +114,7 @@ func run(cfg *config) {
 
 	csvWriter.Flush()
 	log.Printf("\nFinished processing %d lines\n", count)
-
+	return nil
 }
 
 func getConfig() *config {
@@ -102,9 +122,9 @@ func getConfig() *config {
 	c := flag.String("c", "", "The (c)onnection string to use")
 	q := flag.String("q", "", "The (q)uery to use")
 	m := flag.String("m", "comma", "The deli(m)iter to use: 'comma' or 'tab'. Defaults to 'comma'")
-	o := flag.String("o", "", "The fields to (o)bfuscate")
-	w := flag.String("w", "", "The fields to (w)rap in quotes")
-	t := flag.String("t", "double", "The (t)ype of quote to use with -w: 'single' or 'double'. Defaults to 'double'")
+	//o := flag.String("o", "", "The fields to (o)bfuscate")
+	//w := flag.String("w", "", "The fields to (w)rap in quotes")
+	//t := flag.String("t", "double", "The (t)ype of quote to use with -w: 'single' or 'double'. Defaults to 'double'")
 
 	flag.Parse()
 
@@ -116,13 +136,13 @@ func getConfig() *config {
 	}
 
 	return &config{
-		dbAdapter:       *d,
-		connString:      *c,
-		sqlQuery:        *q,
-		obfuscateFields: *o,
-		delimiter:       *m,
-		quoteFields:     *w,
-		quoteType:       *t,
+		dbAdapter:  *d,
+		connString: *c,
+		sqlQuery:   *q,
+		//obfuscateFields: *o,
+		delimiter: *m,
+		//quoteFields:     *w,
+		//quoteType:       *t,
 	}
 }
 

@@ -20,9 +20,6 @@ SqlToCSV supports a number of flags to direct how it works
 * c : The (c)onnection string to use
 * q : The (q)uery to use
 * m : The deli(m)eter to use: 'comma' or 'tab'. Defaults to 'comma'
-* o : The indices of the fields to (o)bfuscate. Ex: "1,3,4"
-* w : The indices of the fields to (w)rap in quotes. Ex: "2,6,8"
-* t : The (t)ype of quote to use with -w: 'single' or 'double'. Defaults to 'double'
 
 Obfuscation
 ===========
